@@ -1,4 +1,4 @@
-# 各專案的精選程式碼彙整
+# 各專案精選程式碼彙整
 此處介紹我在各個專案，包刮編輯器《DialogueTree》、遊戲專案《沉沒意志》、遊戲專案《圖塔圖塔》中較為精華的程式碼片段
 
 ## 圖形化對話編輯器DialogueTree
@@ -7,15 +7,25 @@
 負責編輯器視窗的實際繪製，以及調用各個面版類別的點擊與資料設定/取得函式
 ```cs
 public class DialogueTree : EditorWindow
+
+//根據編輯器的不同狀態，ProcessEvent函式可區分出當前需進行的事件
+public enum WindowState{normal, drag, move, popup, link, scroll};
+public WindowState nowState = WindowState.normal;
+
+public List<Character> lst_chars = new List<Character> ();	//角色清單
+public List<Node> lst_node = new List<Node> ();			//節點清單
+Vector2 coordinate;						//畫面座標
 ```
 
 OnGUI負責主視窗與各面板的繪製，同時也從這邊取得使用者的輸入並做相應的處理
 ```cs
 void OnGUI(){
-	DrawBackground ();
+	//根據編輯器的不同操作狀態，偵測使用者的輸入(點擊、拖曳等)來做出相應的處理
 	ProcessEvent (Event.current);
-	DrawNodes ();
-	DrawPanels ();
+	
+	DrawBackground ();		//繪製背景網格
+	DrawNodes ();			//以迴圈跑過節點清單中的每個節點，呼叫其繪製函式
+	DrawPanels ();			//繪製浮動在主畫面之上的各個面板
 	Repaint ();
 }
 ```
@@ -30,11 +40,13 @@ public Rect canvasRect;		//由於主視窗的畫面可隨意移動，因此設�
 ```
 繪製節點函式
 ```cs
+//繪製函式設為virtual，以便其他種類的節點在繼承為子類別後，可以依據各自不同的資訊來覆寫更改繪製函式
 virtual public void DrawSelf(Vector2 coordinate){
 	//將此節點的原始Rect經過主視窗的畫面座標換算後得到新的Rect
 	canvasRect = rect;
 	canvasRect.position += coordinate;
-
+	
+	//繪製節點上的各個元素
 	GUI.BeginGroup(canvasRect);
 	if (isSelected)
 		GUI.DrawTexture(outlineRect, tex_selected);
@@ -85,7 +97,45 @@ public static string SetName(string _name, Character target, List<Character> cha
 }
 ```
 ## 遊戲專案《沉沒意志》
-### 
+### 遊戲區域
+程式要能夠偵測玩家進入哪一個遊戲區域，藉此觸發各種不同事件。\
+由於"玩家進入X區域"此一訊息需要傳達給各種不同的類別，在這裡使用了觀察者模式來實作此功能。
+
+建立區域觀察者介面
+```cs
+public interface i_AreaObserver{ void ChangeArea (string _nowArea); }
+```
+在每個區域的遊戲物件上都掛載此sc_Area腳本，依據各自的判定範圍偵測玩家是否進入自身區域
+```cs
+public class sc_Area : MonoBehaviour {
+	[SerializeField]
+	string AreaCode = "A0";			//每個實例區域擁有自己的區域代號
+	static string NowArea = "";		//以靜態變數紀錄玩家現在所處的區域代號，讓各個實例區域都能共享此資訊
+	static List<i_AreaObserver> myObservers = new List<i_AreaObserver> ();	//以靜態變數共享觀察者名單
+	
+	//加入觀察者
+	static public void RegisterObserver(i_AreaObserver _observer){ myObservers.Add (_observer); }
+	
+	if (AreaCode != NowArea) {		//若當前紀錄的玩家所在區域不等於自身區域時進行偵測
+		if (CheckPlayerPosition()) {	//偵測玩家的實際座標是否在此區域內
+			NowArea = AreaCode;
+			//呼叫每個觀察者的改變區域函式，並將當前區域代號作為參數傳入
+			foreach (i_AreaObserver AO in myObservers)
+				AO.ChangeArea (NowArea);
+		} 
+	}
+```
+繼承了區域觀察者介面的類別就可依此觸發不同事件
+
+### 劇情轉折點
+由對話中的玩家所選的選項或是與場景上的物件互動皆可增加或移除轉折點
+劇情轉折點也運用了觀察者模式，加入轉折點或移除轉折點都可讓不同觀察者觸發不同事件，在此就不多贅述。
+```cs
+public interface i_PlotFlag{
+	void FlagAdd (string _key);
+	void FlagRemove (string _key);
+}
+```
 
 ## 遊戲專案《圖塔圖塔》
 ### 
