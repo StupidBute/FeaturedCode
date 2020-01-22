@@ -1,6 +1,9 @@
 # 各專案的精選程式碼彙整
+此處介紹我在各個專案，包刮編輯器《DialogueTree》、遊戲專案《沉沒意志》、遊戲專案《圖塔圖塔》中較為精華的程式碼片段
 
 ## 圖形化對話編輯器DialogueTree
+
+#### DialogueTree類別
 	public class DialogueTree : EditorWindow
 負責編輯器視窗的實際繪製，以及調用各個面版類別的點擊與資料設定/取得函式
 
@@ -13,6 +16,7 @@
 	}
 OnGUI負責主視窗與各面板的繪製，同時也從這邊取得使用者的輸入並做相應的處理
 
+#### Node類別
 	public class Node
 基本節點類別，其餘各種節點類別(StartNode、DialogueNode等等)皆繼承自此類別
 
@@ -34,7 +38,8 @@ OnGUI負責主視窗與各面板的繪製，同時也從這邊取得使用者的
 		GUI.Label (NameRect, nodeName, style_name);
 		GUI.EndGroup ();
 	}
-
+	
+#### MyFunctions類別
 	public class MyFunctions
 匯集各通用函式，方便從各個類別中調用
 
