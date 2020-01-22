@@ -6,68 +6,68 @@
 #### DialogueTree類別
 負責編輯器視窗的實際繪製，以及調用各個面版類別的點擊與資料設定/取得函式
 ```cs
-	public class DialogueTree : EditorWindow
+public class DialogueTree : EditorWindow
 ```
 
 OnGUI負責主視窗與各面板的繪製，同時也從這邊取得使用者的輸入並做相應的處理
-
-	void OnGUI(){
+```cs
+void OnGUI(){
 	DrawBackground ();
 	ProcessEvent (Event.current);
 	DrawNodes ();
 	DrawPanels ();
 	Repaint ();
-	}
-
+}
+```
 
 #### Node類別
 基本節點類別，其餘各種節點類別(StartNode、DialogueNode等等)皆繼承自此類別
-	
-	public class Node
+```cs
+public class Node
 
-	public Rect rect;		//記錄此節點的原始Rect
-	public Rect canvasRect;		//由於主視窗的畫面可隨意移動，因此設立此變數來記錄實際在畫面中顯示的Rect
-	
+public Rect rect;		//記錄此節點的原始Rect
+public Rect canvasRect;		//由於主視窗的畫面可隨意移動，因此設立此變數來記錄實際在畫面中顯示的Rect
+```
 繪製節點函式
+```cs
+virtual public void DrawSelf(Vector2 coordinate){
+	//將此節點的原始Rect經過主視窗的畫面座標換算後得到新的Rect
+	canvasRect = rect;
+	canvasRect.position += coordinate;
 
-	virtual public void DrawSelf(Vector2 coordinate){
-		//將此節點的原始Rect經過主視窗的畫面座標換算後得到新的Rect
-		canvasRect = rect;
-		canvasRect.position += coordinate;
-
-		GUI.BeginGroup(canvasRect);
-		if (isSelected)
-			GUI.DrawTexture(outlineRect, tex_selected);
-		GUI.DrawTexture(boxRect, tex_normal);
-		GUI.Label (NameRect, nodeName, style_name);
-		GUI.EndGroup ();
-	}
-	
+	GUI.BeginGroup(canvasRect);
+	if (isSelected)
+		GUI.DrawTexture(outlineRect, tex_selected);
+	GUI.DrawTexture(boxRect, tex_normal);
+	GUI.Label (NameRect, nodeName, style_name);
+	GUI.EndGroup ();
+}
+```
 #### MyFunctions類別
 匯集各通用函式，方便從各個類別中調用
-	
-	public class MyFunctions
-
+```cs
+public class MyFunctions
+```
 將各個節點吸附至背景等間隔的格點上，方便節點的標齊對正
-	
-	public static Vector2 SnapPos(Vector2 size, Vector2 position, float range){
+```cs
+public static Vector2 SnapPos(Vector2 size, Vector2 position, float range){
 	Vector2 center = position + 0.5f * size;
 	center.x = Mathf.Round (center.x / range) * range;
 	center.y = Mathf.Round (center.y / range) * range;
 	return center - 0.5f * size;
-	}
-
+}
+```
 使用者輸入空字串時會自動修正為value參數的字串，避免出現空字串。
-
-	public static string ClampString(string target, string value){
+```cs
+public static string ClampString(string target, string value){
 	char[] splitter = new char[]{ ' ' };
 	return (target.Split (splitter, System.StringSplitOptions.RemoveEmptyEntries).Length == 0) ? value : target;
-	}
-
+}
+```
 將_name字串賦予給target，成為其角色名
-
-	//為避免角色名重複，當_name參數字串與角色名單中的任一角色名重複時，會在_name字串後端增加數字，再賦予給target
-	public static string SetName(string _name, Character target, List<Character> charList){
+為避免角色名重複，當_name參數字串與角色名單中的任一角色名重複時，會在_name字串後端增加數字，再賦予給target
+```cs
+public static string SetName(string _name, Character target, List<Character> charList){
 	foreach(Character c in charList) {
 	    if (_name == c.name && c != target) {
 		string[] sepName = _name.Split (new char[]{ ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
@@ -82,8 +82,8 @@ OnGUI負責主視窗與各面板的繪製，同時也從這邊取得使用者的
 	    }
 	}
 	return _name;
-	}
-
+}
+```
 ## 遊戲專案《沉沒意志》
 ### 
 
