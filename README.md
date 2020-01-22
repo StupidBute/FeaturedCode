@@ -1,12 +1,12 @@
 # 各專案精選程式碼彙整
-此處介紹我在各個專案，包刮編輯器《DialogueTree》、遊戲專案《沉沒意志》、遊戲專案《圖塔圖塔》中較為精華的程式碼片段
+此處節錄介紹我在各個專案，包刮編輯器《DialogueTree》、遊戲專案《沉沒意志》、遊戲專案《圖塔圖塔》中較為精華的程式碼片段
 
 ## 圖形化對話編輯器DialogueTree
 
 #### DialogueTree類別
 負責編輯器視窗的實際繪製，以及調用各個面版類別的點擊與資料設定/取得函式
 ```cs
-public class DialogueTree : EditorWindow
+public class DialogueTree : EditorWindow {
 
 //根據編輯器的不同狀態，ProcessEvent函式可區分出當前需進行的事件
 public enum WindowState{normal, drag, move, popup, link, scroll};
@@ -33,7 +33,7 @@ void OnGUI(){
 #### Node類別
 基本節點類別，其餘各種節點類別(StartNode、DialogueNode等等)皆繼承自此類別
 ```cs
-public class Node
+public class Node {
 
 public Rect rect;		//記錄此節點的原始Rect
 public Rect canvasRect;		//由於主視窗的畫面可隨意移動，因此設立此變數來記錄實際在畫面中顯示的Rect
@@ -58,7 +58,7 @@ virtual public void DrawSelf(Vector2 coordinate){
 #### MyFunctions類別
 匯集各通用函式，方便從各個類別中調用
 ```cs
-public class MyFunctions
+public class MyFunctions {
 ```
 將各個節點吸附至背景等間隔的格點上，方便節點的標齊對正
 ```cs
@@ -97,7 +97,7 @@ public static string SetName(string _name, Character target, List<Character> cha
 }
 ```
 ## 遊戲專案《沉沒意志》
-### 遊戲區域
+#### 遊戲區域
 程式要能夠偵測玩家進入哪一個遊戲區域，藉此觸發各種不同事件。\
 由於"玩家進入X區域"此一訊息需要傳達給各種不同的類別，在這裡使用了觀察者模式來實作此功能。
 
@@ -127,8 +127,8 @@ public class sc_Area : MonoBehaviour {
 ```
 繼承了區域觀察者介面的類別就可依此觸發不同事件
 
-### 劇情轉折點
-由對話中的玩家所選的選項或是與場景上的物件互動皆可增加或移除轉折點
+#### 劇情轉折點
+由對話中的玩家所選的選項或是與場景上的物件互動皆可增加或移除轉折點。\
 劇情轉折點也運用了觀察者模式，加入轉折點或移除轉折點都可讓不同觀察者觸發不同事件，在此就不多贅述。
 ```cs
 public interface i_PlotFlag{
@@ -138,4 +138,79 @@ public interface i_PlotFlag{
 ```
 
 ## 遊戲專案《圖塔圖塔》
-### 
+遊戲由雙方隊伍派兵互相進攻，在同一條道路上的友兵會排隊增加「重量」，與敵兵碰撞時會以此重量決定碰撞結果(往重量輕的一方推進或僵持不下)。\
+其排隊與碰撞系統皆在基礎士兵腳本中實作。
+#### 士兵腳本
+```cs
+public class sc_Hero : MonoBehaviour {
+	//記錄各個基礎素質與前後連結的士兵
+	[SerializeField]
+	float Weight;				//自身本體的重量，此數值在遊戲中不會變動
+	public float totalWeight;		//記錄隊伍總重，此數值會在runtime根據排隊情況作加減
+	public sc_Hero FrontConnect = null;	//排隊時，記錄前方士兵
+	public sc_Hero BackConnect = null;	//排隊時，記錄後方士兵
+	
+	//每幀會依序進行下列判斷
+	void Update () {
+		//若往上推進到敵方主堡，或被往下回推到己方主堡，或是血量歸0，則消滅此士兵
+		if (transform.position.y < -4.5f || transform.position.y > 4.5f || hp < 0.01f)
+			SelfDestruct();
+
+		CheckConnect ();			//偵測與友軍的連結(排隊系統)
+		if (face == 1)	CheckCollide();		//偵測與敵軍的碰撞(碰撞系統)，由其中一側的士兵來進行此判斷即可
+		Move ();				//依據碰撞後的結果進行移動
+	}
+```
+#### 排隊系統
+每個士兵皆會執行偵測友軍連結的函式，與後方友軍連結時會將此友軍所記錄的總重量加在自身總重量上，如此一來排成一排的士兵將會形成遞迴關係，將重量從最後方一路加總到最前方的士兵身上。
+```cs
+void CheckConnect(){
+	//向後偵測友軍距離
+	RaycastHit2D other = Physics2D.Raycast(transform.position, face * Vector2.down, range, layerMask);
+	if (other.collider != null) {
+		//若後方友軍距離夠近，則排成隊伍並將後方友軍所記錄的總重增加到自身總重上
+		if (BackConnect == null) {
+			BackConnect = other.collider.GetComponent<sc_Hero>();
+			BackConnect.FrontConnect = GetComponent<sc_Hero>();
+		}
+		totalWeight = Weight + BackConnect.totalWeight;
+	}else{
+		//若不夠近則切斷隊伍，總重等同於自己本體的重量
+		if (BackConnect != null) {
+			BackConnect.FrontConnect = null;
+			BackConnect = null;
+		}
+		totalWeight = Weight;
+	}
+}
+```
+#### 碰撞系統
+敵我雙方的最前方士兵都經由排隊系統得到整排隊伍的總重量後，再互相進行碰撞判斷。
+```cs
+void CheckCollide(){
+	//向前偵測是否碰撞到敵方士兵
+	RaycastHit2D other = Physics2D.Raycast(transform.position, Vector2.up, range, layerMask);
+	if (other.collider != null) {
+		sc_Hero enemy = other.collider.GetComponent<sc_Hero> ();
+		//雙方互相受到攻擊傷害
+		enemy.Damaged (ATK);
+		Damaged (enemy.ATK);
+		
+		//以雙方隊伍的總重量判斷碰撞後往哪一方推進，或是等重而相互後退
+		float otherWeight = enemy.totalWeight;
+		if (totalWeight > otherWeight + 0.01f) {
+			enemy.ConnectSpeed(backSPD, true);
+			spd = 0f;
+			Anim.SetTrigger ("attack");
+		} else if (totalWeight < otherWeight - 0.01f) {
+			enemy.ConnectSpeed(0f, true);
+			spd = backSPD;
+			enemy.Anim.SetTrigger ("attack");
+		} else {
+			enemy.ConnectSpeed(backSPD, true);
+			spd = backSPD;
+		}
+	}
+}
+```
+
